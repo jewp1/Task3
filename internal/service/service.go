@@ -7,6 +7,7 @@ import (
 	"simple-service/internal/dto"
 	"simple-service/internal/repo"
 	"simple-service/pkg/validator"
+	"strconv"
 )
 
 // Слой бизнес-логики. Тут должна быть основная логика сервиса
@@ -14,6 +15,7 @@ import (
 // Service - интерфейс для бизнес-логики
 type Service interface {
 	CreateTask(ctx *fiber.Ctx) error
+	GetTaskByID(ctx *fiber.Ctx) error
 }
 
 type service struct {
@@ -59,6 +61,28 @@ func (s *service) CreateTask(ctx *fiber.Ctx) error {
 	response := dto.Response{
 		Status: "success",
 		Data:   map[string]int{"task_id": taskID},
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(response)
+}
+
+func (s *service) GetTaskByID(ctx *fiber.Ctx) error {
+
+	id, err := strconv.Atoi(ctx.Params("id"))
+	if err != nil {
+		s.log.Error("Invalid id parameter", zap.Error(err))
+		return dto.BadResponseError(ctx, dto.FieldBadFormat, "Invalid id parameter")
+	}
+
+	task, err := s.repo.GetTaskByID(ctx.Context(), id)
+	if err != nil {
+		s.log.Error("Failed to get task", zap.Error(err))
+		return dto.InternalServerError(ctx)
+	}
+
+	response := dto.Response{
+		Status: "success",
+		Data:   map[string]string{"Title": task.Title, "Description": task.Description},
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(response)
